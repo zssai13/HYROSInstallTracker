@@ -161,6 +161,10 @@ export default function App() {
   const [isLoading, setIsLoading] = useState(true)
   const [uploading, setUploading] = useState(null) // install id currently uploading
   const [downloading, setDownloading] = useState(false)
+  const [showAddForm, setShowAddForm] = useState(false)
+  const [newInstallName, setNewInstallName] = useState('')
+  const [newInstallVersion, setNewInstallVersion] = useState('v1')
+  const [newInstallCategory, setNewInstallCategory] = useState('Core')
   const fileInputRefs = useRef({})
 
   const categories = [...new Set(installs.map(i => i.category))].sort()
@@ -171,11 +175,14 @@ export default function App() {
       const saved = localStorage.getItem(STORAGE_KEY)
       if (saved) {
         const savedData = JSON.parse(saved)
+        // Merge default installs with saved state
         const mergedInstalls = defaultInstalls.map(defaultInstall => {
           const savedInstall = savedData.installs?.find(s => s.id === defaultInstall.id)
           return savedInstall ? { ...defaultInstall, ...savedInstall } : defaultInstall
         })
-        setInstalls(mergedInstalls)
+        // Add any custom installs (id > 104)
+        const customInstalls = savedData.installs?.filter(s => s.id > 104) || []
+        setInstalls([...mergedInstalls, ...customInstalls])
         if (savedData.defaultChecker) {
           setDefaultChecker(savedData.defaultChecker)
         }
@@ -200,9 +207,38 @@ export default function App() {
   }, [installs, defaultChecker, isLoading])
 
   const toggleCritical = (id) => {
-    setInstalls(installs.map(install => 
+    setInstalls(installs.map(install =>
       install.id === id ? { ...install, critical: !install.critical } : install
     ))
+  }
+
+  const addInstall = () => {
+    if (!newInstallName.trim()) return
+
+    const maxId = Math.max(...installs.map(i => i.id))
+    const newInstall = {
+      id: maxId + 1,
+      name: newInstallName.trim(),
+      version: newInstallVersion,
+      category: newInstallCategory,
+      status: null,
+      lastChecked: null,
+      checkedBy: '',
+      critical: false,
+      file: null
+    }
+
+    setInstalls([...installs, newInstall])
+    setNewInstallName('')
+    setNewInstallVersion('v1')
+    setNewInstallCategory('Core')
+    setShowAddForm(false)
+  }
+
+  const deleteInstall = (id) => {
+    // Only allow deleting custom installs (id > 104)
+    if (id <= 104) return
+    setInstalls(installs.filter(i => i.id !== id))
   }
 
   const toggleStatus = (id) => {
@@ -455,35 +491,115 @@ Available Documentation:
             <h1 className="text-3xl font-bold text-white mb-2">HYROS Install Tracker</h1>
             <p className="text-gray-400">Track the status of all integration install documentation</p>
           </div>
-          <button
-            onClick={handleDownloadAll}
-            disabled={stats.filesUploaded === 0 || downloading}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${
-              stats.filesUploaded > 0 && !downloading
-                ? 'bg-blue-600 hover:bg-blue-500 text-white'
-                : 'bg-gray-700 text-gray-500 cursor-not-allowed'
-            }`}
-          >
-            {downloading ? (
-              <>
-                <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"/>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
-                </svg>
-                Downloading...
-              </>
-            ) : (
-              <>
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                  <polyline points="7 10 12 15 17 10"/>
-                  <line x1="12" y1="15" x2="12" y2="3"/>
-                </svg>
-                Download All ({stats.filesUploaded} files)
-              </>
-            )}
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setShowAddForm(true)}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors bg-green-600 hover:bg-green-500 text-white"
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <line x1="12" y1="5" x2="12" y2="19"/>
+                <line x1="5" y1="12" x2="19" y2="12"/>
+              </svg>
+              Add Install
+            </button>
+            <button
+              onClick={handleDownloadAll}
+              disabled={stats.filesUploaded === 0 || downloading}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${
+                stats.filesUploaded > 0 && !downloading
+                  ? 'bg-blue-600 hover:bg-blue-500 text-white'
+                  : 'bg-gray-700 text-gray-500 cursor-not-allowed'
+              }`}
+            >
+              {downloading ? (
+                <>
+                  <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"/>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                  </svg>
+                  Downloading...
+                </>
+              ) : (
+                <>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                    <polyline points="7 10 12 15 17 10"/>
+                    <line x1="12" y1="15" x2="12" y2="3"/>
+                  </svg>
+                  Download All ({stats.filesUploaded} files)
+                </>
+              )}
+            </button>
+          </div>
         </div>
+
+        {/* Add Install Modal */}
+        {showAddForm && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-gray-800 rounded-lg p-6 w-96 border border-gray-700">
+              <h2 className="text-xl font-bold text-white mb-4">Add New Install</h2>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-gray-400 text-sm mb-1">Install Name</label>
+                  <input
+                    type="text"
+                    value={newInstallName}
+                    onChange={(e) => setNewInstallName(e.target.value)}
+                    placeholder="e.g., Custom Platform"
+                    className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white placeholder-gray-400"
+                    autoFocus
+                  />
+                </div>
+                <div>
+                  <label className="block text-gray-400 text-sm mb-1">Version</label>
+                  <select
+                    value={newInstallVersion}
+                    onChange={(e) => setNewInstallVersion(e.target.value)}
+                    className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white"
+                  >
+                    <option value="v1">V1</option>
+                    <option value="v2">V2</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-gray-400 text-sm mb-1">Category</label>
+                  <select
+                    value={newInstallCategory}
+                    onChange={(e) => setNewInstallCategory(e.target.value)}
+                    className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white"
+                  >
+                    {categories.map(cat => (
+                      <option key={cat} value={cat}>{cat}</option>
+                    ))}
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+              </div>
+              <div className="flex justify-end gap-3 mt-6">
+                <button
+                  onClick={() => {
+                    setShowAddForm(false)
+                    setNewInstallName('')
+                  }}
+                  className="px-4 py-2 rounded-lg font-medium bg-gray-700 hover:bg-gray-600 text-gray-300"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={addInstall}
+                  disabled={!newInstallName.trim()}
+                  className={`px-4 py-2 rounded-lg font-medium ${
+                    newInstallName.trim()
+                      ? 'bg-green-600 hover:bg-green-500 text-white'
+                      : 'bg-gray-700 text-gray-500 cursor-not-allowed'
+                  }`}
+                >
+                  Add Install
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Stats */}
         <div className="grid grid-cols-6 gap-4 mb-6">
@@ -627,6 +743,15 @@ Available Documentation:
                           {install.critical ? <SkullFilled /> : <SkullOutline />}
                         </button>
                         <span className="text-white font-medium">{install.name}</span>
+                        {install.id > 104 && (
+                          <button
+                            onClick={() => deleteInstall(install.id)}
+                            className="text-red-400 hover:text-red-300 text-xs ml-2"
+                            title="Delete custom install"
+                          >
+                            (delete)
+                          </button>
+                        )}
                       </div>
                     </td>
                     <td className="p-4 text-center">
