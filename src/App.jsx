@@ -65,14 +65,111 @@ export default function App() {
 
   const categories = [...new Set(installs.map(i => i.category))].sort()
 
+  // Sync orphaned bucket files with DB installs
+  const syncBucketWithDb = async (dbInstalls) => {
+    try {
+      // List all files in the bucket
+      const { data: bucketFiles, error: listError } = await supabase.storage
+        .from(BUCKET_NAME)
+        .list('', { limit: 1000 })
+
+      if (listError) {
+        console.error('Bucket sync: failed to list files:', listError)
+        return false
+      }
+
+      const docFiles = (bucketFiles || []).filter(f =>
+        f.name !== 'index.txt' && f.name.endsWith('.txt')
+      )
+
+      // Find orphan files: in bucket but not linked to any DB install
+      const linkedFilenames = new Set(
+        dbInstalls.filter(i => i.file).map(i => i.file.name)
+      )
+      const orphans = docFiles.filter(f => !linkedFilenames.has(f.name))
+
+      if (orphans.length === 0) {
+        console.log('Bucket sync: no orphaned files found')
+        return false
+      }
+
+      console.log(`Bucket sync: found ${orphans.length} orphaned file(s):`, orphans.map(f => f.name))
+
+      // Normalize a string for fuzzy matching
+      const normalize = (str) =>
+        str.toLowerCase().replace(/\.txt$/, '').replace(/[-_]/g, ' ').replace(/\s+/g, ' ').trim()
+
+      // Remove common suffixes like "install" from filename for matching
+      const stripInstallSuffix = (str) =>
+        str.replace(/\binstall\b/gi, '').replace(/\s+/g, ' ').trim()
+
+      let linked = 0
+
+      for (const orphan of orphans) {
+        const normFile = normalize(orphan.name)
+        const normFileStripped = stripInstallSuffix(normFile)
+
+        // Find an install without a file whose name matches
+        const match = dbInstalls.find(inst => {
+          if (inst.file) return false // already has a file
+          const normName = normalize(inst.name)
+          // Exact match after normalization
+          if (normName === normFile || normName === normFileStripped) return true
+          // Name contained in filename or vice versa
+          if (normFileStripped.includes(normName) || normName.includes(normFileStripped)) return true
+          return false
+        })
+
+        if (match) {
+          const fileUrl = getPublicUrl(orphan.name)
+          const uploadDate = new Date().toLocaleDateString('en-US')
+          try {
+            await updateInstall(match.id, {
+              file_name: orphan.name,
+              file_url: fileUrl,
+              file_upload_date: uploadDate
+            })
+            // Update the local object so subsequent matches don't double-link
+            match.file = { name: orphan.name, url: fileUrl, uploadDate }
+            linked++
+            console.log(`Bucket sync: linked "${orphan.name}" → "${match.name}" (id ${match.id})`)
+          } catch (err) {
+            console.error(`Bucket sync: failed to link "${orphan.name}":`, err)
+          }
+        } else {
+          console.log(`Bucket sync: no matching install for "${orphan.name}"`)
+        }
+      }
+
+      if (linked > 0) {
+        console.log(`Bucket sync: linked ${linked} file(s), regenerating index`)
+        return true // signal that we need to re-fetch and regenerate
+      }
+      return false
+    } catch (err) {
+      console.error('Bucket sync error:', err)
+      return false
+    }
+  }
+
   // Load data from Supabase on mount + subscribe to realtime
   useEffect(() => {
     let channel = null
 
     async function loadData() {
       try {
-        const dbInstalls = await fetchInstalls()
+        let dbInstalls = await fetchInstalls()
         setInstalls(dbInstalls)
+
+        // Sync orphaned bucket files with DB
+        const didLink = await syncBucketWithDb(dbInstalls)
+        if (didLink) {
+          // Re-fetch to get updated file links
+          dbInstalls = await fetchInstalls()
+          setInstalls(dbInstalls)
+          // Regenerate index so it reflects correct metadata
+          await regenerateIndex()
+        }
 
         // Load defaultChecker from localStorage (per-user preference)
         const savedChecker = localStorage.getItem(CHECKER_STORAGE_KEY)
