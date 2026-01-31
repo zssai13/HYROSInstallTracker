@@ -363,7 +363,7 @@ export default function App() {
   }
 
   // Generate index.txt from actual bucket contents + DB metadata
-  const regenerateIndex = async () => {
+  const regenerateIndex = async (knownInstalls) => {
     try {
       // 1. List ALL actual files in the bucket (source of truth)
       const { data: bucketFiles, error: listError } = await supabase.storage
@@ -380,8 +380,8 @@ export default function App() {
         f.name !== 'index.txt' && f.name.endsWith('.txt')
       )
 
-      // 3. Fetch current installs from DB for metadata
-      const dbInstalls = await fetchInstalls()
+      // 3. Use known installs if provided, otherwise fetch from DB
+      const dbInstalls = knownInstalls || await fetchInstalls()
 
       // 4. Cross-reference bucket files with DB installs
       const entries = docFiles.map(bucketFile => {
@@ -414,17 +414,21 @@ Available Documentation:
 
       const indexContent = `${header}\n${entries.join('\n')}\n`
 
+      // Wrap in Blob — Supabase Storage requires Blob/File/ArrayBuffer, not raw strings
+      const blob = new Blob([indexContent], { type: 'text/plain' })
+
       const { error } = await supabase.storage
         .from(BUCKET_NAME)
-        .upload('index.txt', indexContent, {
+        .upload('index.txt', blob, {
           contentType: 'text/plain',
-          upsert: true
+          upsert: true,
+          cacheControl: 'no-cache'
         })
 
       if (error) {
         console.error('Failed to update index:', error)
       } else {
-        console.log('Index.txt updated successfully')
+        console.log('Index.txt updated successfully with', docFiles.length, 'files')
       }
     } catch (err) {
       console.error('Error updating index:', err)
@@ -449,13 +453,14 @@ Available Documentation:
       const url = getPublicUrl(file.name)
       const uploadDate = new Date().toLocaleDateString()
 
+      // Build updated installs with the new file info
+      const fileData = { name: file.name, url, uploadDate }
+      const updatedInstalls = installs.map(install =>
+        install.id === id ? { ...install, file: fileData } : install
+      )
+
       // Update local state
-      setInstalls(prev => prev.map(install =>
-        install.id === id ? {
-          ...install,
-          file: { name: file.name, url, uploadDate }
-        } : install
-      ))
+      setInstalls(updatedInstalls)
 
       // Update DB
       await updateInstall(id, {
@@ -464,8 +469,8 @@ Available Documentation:
         file_upload_date: uploadDate
       })
 
-      // Regenerate index.txt from bucket listing
-      await regenerateIndex()
+      // Regenerate index.txt — pass known-good installs to avoid DB read lag
+      await regenerateIndex(updatedInstalls)
 
     } catch (err) {
       console.error('Upload failed:', err)
@@ -492,10 +497,13 @@ Available Documentation:
         .from(BUCKET_NAME)
         .remove([install.file.name])
 
-      // Update local state
-      setInstalls(prev => prev.map(i =>
+      // Build updated installs with file removed
+      const updatedInstalls = installs.map(i =>
         i.id === id ? { ...i, file: null } : i
-      ))
+      )
+
+      // Update local state
+      setInstalls(updatedInstalls)
 
       // Update DB
       await updateInstall(id, {
@@ -504,8 +512,8 @@ Available Documentation:
         file_upload_date: null
       })
 
-      // Regenerate index.txt from bucket listing
-      await regenerateIndex()
+      // Regenerate index.txt — pass known-good installs to avoid DB read lag
+      await regenerateIndex(updatedInstalls)
 
     } catch (err) {
       console.error('Delete failed:', err)
@@ -606,7 +614,7 @@ Available Documentation:
             <p className="text-gray-400">
               Track the status of all integration install documentation •{' '}
               <a
-                href={`${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/${BUCKET_NAME}/index.txt`}
+                href={`${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/${BUCKET_NAME}/index.txt?t=${Date.now()}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-blue-400 hover:text-blue-300 underline"
