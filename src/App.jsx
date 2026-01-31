@@ -1,115 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react'
 import JSZip from 'jszip'
-import { supabase, BUCKET_NAME, getPublicUrl } from './lib/supabase'
-
-const defaultInstalls = [
-  // V1 Installs
-  { id: 1, name: 'Active Campaign', version: 'v1', category: 'Email/CRM', status: null, lastChecked: null, checkedBy: '', critical: false, file: null },
-  { id: 2, name: 'Acuity', version: 'v1', category: 'Scheduling', status: null, lastChecked: null, checkedBy: '', critical: false, file: null },
-  { id: 3, name: 'AdRoll', version: 'v1', category: 'Ads', status: null, lastChecked: null, checkedBy: '', critical: false, file: null },
-  { id: 4, name: 'API', version: 'v1', category: 'Core', status: null, lastChecked: null, checkedBy: '', critical: false, file: null },
-  { id: 5, name: 'AppointmentCore', version: 'v1', category: 'Scheduling', status: null, lastChecked: null, checkedBy: '', critical: false, file: null },
-  { id: 6, name: 'Authorize.net', version: 'v1', category: 'Payment', status: null, lastChecked: null, checkedBy: '', critical: false, file: null },
-  { id: 7, name: 'BigCommerce', version: 'v1', category: 'Ecommerce', status: null, lastChecked: null, checkedBy: '', critical: false, file: null },
-  { id: 8, name: 'Bing Ads', version: 'v1', category: 'Ads', status: null, lastChecked: null, checkedBy: '', critical: false, file: null },
-  { id: 9, name: 'Braintree', version: 'v1', category: 'Payment', status: null, lastChecked: null, checkedBy: '', critical: false, file: null },
-  { id: 10, name: 'Braze', version: 'v1', category: 'Email/CRM', status: null, lastChecked: null, checkedBy: '', critical: false, file: null },
-  { id: 11, name: 'Calendly', version: 'v1', category: 'Scheduling', status: null, lastChecked: null, checkedBy: '', critical: false, file: null },
-  { id: 12, name: 'CallRail', version: 'v1', category: 'Tracking', status: null, lastChecked: null, checkedBy: '', critical: false, file: null },
-  { id: 13, name: 'Chargebee', version: 'v1', category: 'Payment', status: null, lastChecked: null, checkedBy: '', critical: false, file: null },
-  { id: 14, name: 'ClickFunnels', version: 'v1', category: 'Funnel', status: null, lastChecked: null, checkedBy: '', critical: false, file: null },
-  { id: 15, name: 'ClickFunnels 2', version: 'v1', category: 'Funnel', status: null, lastChecked: null, checkedBy: '', critical: false, file: null },
-  { id: 16, name: 'Close CRM', version: 'v1', category: 'Email/CRM', status: null, lastChecked: null, checkedBy: '', critical: false, file: null },
-  { id: 17, name: 'CopeCart', version: 'v1', category: 'Payment', status: null, lastChecked: null, checkedBy: '', critical: false, file: null },
-  { id: 18, name: 'Custom Ad Source', version: 'v1', category: 'Ads', status: null, lastChecked: null, checkedBy: '', critical: false, file: null },
-  { id: 19, name: 'Demio', version: 'v1', category: 'Webinar', status: null, lastChecked: null, checkedBy: '', critical: false, file: null },
-  { id: 20, name: 'Drip', version: 'v1', category: 'Email/CRM', status: null, lastChecked: null, checkedBy: '', critical: false, file: null },
-  { id: 21, name: 'Easy Pay Direct', version: 'v1', category: 'Payment', status: null, lastChecked: null, checkedBy: '', critical: false, file: null },
-  { id: 22, name: 'EverWebinar', version: 'v1', category: 'Webinar', status: null, lastChecked: null, checkedBy: '', critical: false, file: null },
-  { id: 23, name: 'EverWebinar ClickFunnels', version: 'v1', category: 'Webinar', status: null, lastChecked: null, checkedBy: '', critical: false, file: null },
-  { id: 24, name: 'EverWebinar Default', version: 'v1', category: 'Webinar', status: null, lastChecked: null, checkedBy: '', critical: false, file: null },
-  { id: 25, name: 'EverWebinar Embedded', version: 'v1', category: 'Webinar', status: null, lastChecked: null, checkedBy: '', critical: false, file: null },
-  { id: 26, name: 'eWebinar', version: 'v1', category: 'Webinar', status: null, lastChecked: null, checkedBy: '', critical: false, file: null },
-  { id: 27, name: 'Facebook Ads', version: 'v1', category: 'Ads', status: null, lastChecked: null, checkedBy: '', critical: false, file: null },
-  { id: 28, name: 'Funnelish', version: 'v1', category: 'Funnel', status: null, lastChecked: null, checkedBy: '', critical: false, file: null },
-  { id: 29, name: 'GoCardless', version: 'v1', category: 'Payment', status: null, lastChecked: null, checkedBy: '', critical: false, file: null },
-  { id: 30, name: 'GoHighLevel', version: 'v1', category: 'Funnel', status: null, lastChecked: null, checkedBy: '', critical: false, file: null },
-  { id: 31, name: 'GoHighLevel Scheduler', version: 'v1', category: 'Scheduling', status: null, lastChecked: null, checkedBy: '', critical: false, file: null },
-  { id: 32, name: 'Google Ads', version: 'v1', category: 'Ads', status: null, lastChecked: null, checkedBy: '', critical: false, file: null },
-  { id: 33, name: 'GTM', version: 'v1', category: 'Tracking', status: null, lastChecked: null, checkedBy: '', critical: false, file: null },
-  { id: 34, name: 'Hotmart', version: 'v1', category: 'Ecommerce', status: null, lastChecked: null, checkedBy: '', critical: false, file: null },
-  { id: 35, name: 'HubSpot', version: 'v1', category: 'Email/CRM', status: null, lastChecked: null, checkedBy: '', critical: false, file: null },
-  { id: 36, name: 'HubSpot Forms', version: 'v1', category: 'Email/CRM', status: null, lastChecked: null, checkedBy: '', critical: false, file: null },
-  { id: 37, name: 'HubSpot Meetings', version: 'v1', category: 'Scheduling', status: null, lastChecked: null, checkedBy: '', critical: false, file: null },
-  { id: 38, name: 'iClosed', version: 'v1', category: 'Sales', status: null, lastChecked: null, checkedBy: '', critical: false, file: null },
-  { id: 39, name: 'Infusionsoft/Keap', version: 'v1', category: 'Email/CRM', status: null, lastChecked: null, checkedBy: '', critical: false, file: null },
-  { id: 40, name: 'Instapage', version: 'v1', category: 'Landing Page', status: null, lastChecked: null, checkedBy: '', critical: false, file: null },
-  { id: 41, name: 'Invoiced', version: 'v1', category: 'Payment', status: null, lastChecked: null, checkedBy: '', critical: false, file: null },
-  { id: 42, name: 'JotForm Integration', version: 'v1', category: 'Forms', status: null, lastChecked: null, checkedBy: '', critical: false, file: null },
-  { id: 43, name: 'Kajabi', version: 'v1', category: 'Course', status: null, lastChecked: null, checkedBy: '', critical: false, file: null },
-  { id: 44, name: 'Kartra', version: 'v1', category: 'Funnel', status: null, lastChecked: null, checkedBy: '', critical: false, file: null },
-  { id: 45, name: 'Klaviyo', version: 'v1', category: 'Email/CRM', status: null, lastChecked: null, checkedBy: '', critical: false, file: null },
-  { id: 46, name: 'Leadpages', version: 'v1', category: 'Landing Page', status: null, lastChecked: null, checkedBy: '', critical: false, file: null },
-  { id: 47, name: 'LinkedIn Ads', version: 'v1', category: 'Ads', status: null, lastChecked: null, checkedBy: '', critical: false, file: null },
-  { id: 48, name: 'Magento', version: 'v1', category: 'Ecommerce', status: null, lastChecked: null, checkedBy: '', critical: false, file: null },
-  { id: 49, name: 'MGID', version: 'v1', category: 'Ads', status: null, lastChecked: null, checkedBy: '', critical: false, file: null },
-  { id: 50, name: 'NMI', version: 'v1', category: 'Payment', status: null, lastChecked: null, checkedBy: '', critical: false, file: null },
-  { id: 51, name: 'Omnisend', version: 'v1', category: 'Email/CRM', status: null, lastChecked: null, checkedBy: '', critical: false, file: null },
-  { id: 52, name: 'OnceHub', version: 'v1', category: 'Scheduling', status: null, lastChecked: null, checkedBy: '', critical: false, file: null },
-  { id: 53, name: 'Ontraport', version: 'v1', category: 'Email/CRM', status: null, lastChecked: null, checkedBy: '', critical: false, file: null },
-  { id: 54, name: 'Pabbly', version: 'v1', category: 'Automation', status: null, lastChecked: null, checkedBy: '', critical: false, file: null },
-  { id: 55, name: 'PayKickstart', version: 'v1', category: 'Payment', status: null, lastChecked: null, checkedBy: '', critical: false, file: null },
-  { id: 56, name: 'PayPal', version: 'v1', category: 'Payment', status: null, lastChecked: null, checkedBy: '', critical: false, file: null },
-  { id: 57, name: 'Pinterest Ads', version: 'v1', category: 'Ads', status: null, lastChecked: null, checkedBy: '', critical: false, file: null },
-  { id: 58, name: 'Pipedrive', version: 'v1', category: 'Email/CRM', status: null, lastChecked: null, checkedBy: '', critical: false, file: null },
-  { id: 59, name: 'Recurly', version: 'v1', category: 'Payment', status: null, lastChecked: null, checkedBy: '', critical: false, file: null },
-  { id: 60, name: 'Reddit Ads', version: 'v1', category: 'Ads', status: null, lastChecked: null, checkedBy: '', critical: false, file: null },
-  { id: 61, name: 'Requirements', version: 'v1', category: 'Core', status: null, lastChecked: null, checkedBy: '', critical: false, file: null },
-  { id: 62, name: 'Ringba', version: 'v1', category: 'Tracking', status: null, lastChecked: null, checkedBy: '', critical: false, file: null },
-  { id: 63, name: 'Salesforce', version: 'v1', category: 'Email/CRM', status: null, lastChecked: null, checkedBy: '', critical: false, file: null },
-  { id: 64, name: 'SamCart', version: 'v1', category: 'Payment', status: null, lastChecked: null, checkedBy: '', critical: false, file: null },
-  { id: 65, name: 'SavvyCal', version: 'v1', category: 'Scheduling', status: null, lastChecked: null, checkedBy: '', critical: false, file: null },
-  { id: 66, name: 'Shopify', version: 'v1', category: 'Ecommerce', status: null, lastChecked: null, checkedBy: '', critical: false, file: null },
-  { id: 67, name: 'Shopify BetterCart', version: 'v1', category: 'Ecommerce', status: null, lastChecked: null, checkedBy: '', critical: false, file: null },
-  { id: 68, name: 'Shopify PageFly', version: 'v1', category: 'Ecommerce', status: null, lastChecked: null, checkedBy: '', critical: false, file: null },
-  { id: 69, name: 'Shopify ReCharge', version: 'v1', category: 'Ecommerce', status: null, lastChecked: null, checkedBy: '', critical: false, file: null },
-  { id: 70, name: 'Skool', version: 'v1', category: 'Course', status: null, lastChecked: null, checkedBy: '', critical: false, file: null },
-  { id: 71, name: 'Snapchat Ads', version: 'v1', category: 'Ads', status: null, lastChecked: null, checkedBy: '', critical: false, file: null },
-  { id: 72, name: 'Square', version: 'v1', category: 'Payment', status: null, lastChecked: null, checkedBy: '', critical: false, file: null },
-  { id: 73, name: 'Squarespace', version: 'v1', category: 'Website', status: null, lastChecked: null, checkedBy: '', critical: false, file: null },
-  { id: 74, name: 'Standard Script', version: 'v1', category: 'Core', status: null, lastChecked: null, checkedBy: '', critical: false, file: null },
-  { id: 75, name: 'Stealth Seminar', version: 'v1', category: 'Webinar', status: null, lastChecked: null, checkedBy: '', critical: false, file: null },
-  { id: 76, name: 'Stripe', version: 'v1', category: 'Payment', status: null, lastChecked: null, checkedBy: '', critical: false, file: null },
-  { id: 77, name: 'Taboola', version: 'v1', category: 'Ads', status: null, lastChecked: null, checkedBy: '', critical: false, file: null },
-  { id: 78, name: 'Teachable', version: 'v1', category: 'Course', status: null, lastChecked: null, checkedBy: '', critical: false, file: null },
-  { id: 79, name: 'ThriveCart', version: 'v1', category: 'Payment', status: null, lastChecked: null, checkedBy: '', critical: false, file: null },
-  { id: 80, name: 'TikTok Ads', version: 'v1', category: 'Ads', status: null, lastChecked: null, checkedBy: '', critical: false, file: null },
-  { id: 81, name: 'TikTok Shops', version: 'v1', category: 'Ecommerce', status: null, lastChecked: null, checkedBy: '', critical: false, file: null },
-  { id: 82, name: 'Twitter/X Ads', version: 'v1', category: 'Ads', status: null, lastChecked: null, checkedBy: '', critical: false, file: null },
-  { id: 83, name: 'Typeform', version: 'v1', category: 'Forms', status: null, lastChecked: null, checkedBy: '', critical: false, file: null },
-  { id: 84, name: 'Unbounce', version: 'v1', category: 'Landing Page', status: null, lastChecked: null, checkedBy: '', critical: false, file: null },
-  { id: 85, name: 'Uscreen', version: 'v1', category: 'Course', status: null, lastChecked: null, checkedBy: '', critical: false, file: null },
-  { id: 86, name: 'Wave Apps', version: 'v1', category: 'Payment', status: null, lastChecked: null, checkedBy: '', critical: false, file: null },
-  { id: 87, name: 'Webflow', version: 'v1', category: 'Website', status: null, lastChecked: null, checkedBy: '', critical: false, file: null },
-  { id: 88, name: 'WebinarFuel', version: 'v1', category: 'Webinar', status: null, lastChecked: null, checkedBy: '', critical: false, file: null },
-  { id: 89, name: 'WebinarGeek', version: 'v1', category: 'Webinar', status: null, lastChecked: null, checkedBy: '', critical: false, file: null },
-  { id: 90, name: 'WebinarJam', version: 'v1', category: 'Webinar', status: null, lastChecked: null, checkedBy: '', critical: false, file: null },
-  { id: 91, name: 'Wix', version: 'v1', category: 'Website', status: null, lastChecked: null, checkedBy: '', critical: false, file: null },
-  { id: 92, name: 'WooCommerce', version: 'v1', category: 'Ecommerce', status: null, lastChecked: null, checkedBy: '', critical: false, file: null },
-  { id: 93, name: 'WordPress', version: 'v1', category: 'Website', status: null, lastChecked: null, checkedBy: '', critical: false, file: null },
-  { id: 94, name: 'YouCanBook.me', version: 'v1', category: 'Scheduling', status: null, lastChecked: null, checkedBy: '', critical: false, file: null },
-  { id: 95, name: 'Zapier', version: 'v1', category: 'Automation', status: null, lastChecked: null, checkedBy: '', critical: false, file: null },
-  { id: 96, name: 'Zaxaa', version: 'v1', category: 'Payment', status: null, lastChecked: null, checkedBy: '', critical: false, file: null },
-  // V2 Installs
-  { id: 97, name: 'ClickFunnels', version: 'v2', category: 'Funnel', status: null, lastChecked: null, checkedBy: '', critical: false, file: null },
-  { id: 98, name: 'Facebook Ads', version: 'v2', category: 'Ads', status: null, lastChecked: null, checkedBy: '', critical: false, file: null },
-  { id: 99, name: 'Google Ads', version: 'v2', category: 'Ads', status: null, lastChecked: null, checkedBy: '', critical: false, file: null },
-  { id: 100, name: 'Google Ads Automatic', version: 'v2', category: 'Ads', status: null, lastChecked: null, checkedBy: '', critical: false, file: null },
-  { id: 101, name: 'iClosed', version: 'v2', category: 'Sales', status: null, lastChecked: null, checkedBy: '', critical: false, file: null },
-  { id: 102, name: 'Reddit Ads', version: 'v2', category: 'Ads', status: null, lastChecked: null, checkedBy: '', critical: false, file: null },
-  { id: 103, name: 'Stripe', version: 'v2', category: 'Payment', status: null, lastChecked: null, checkedBy: '', critical: false, file: null },
-  { id: 104, name: 'TikTok Ads', version: 'v2', category: 'Ads', status: null, lastChecked: null, checkedBy: '', critical: false, file: null },
-]
+import {
+  supabase, BUCKET_NAME, getPublicUrl,
+  fetchInstalls, updateInstall, insertInstall,
+  deleteInstallById, getMaxId, subscribeToInstalls, rowToInstall
+} from './lib/supabase'
 
 // Skull icons
 const SkullOutline = () => (
@@ -147,10 +42,10 @@ const formatDateForDisplay = (dateStr) => {
   return `${date.getMonth() + 1}/${date.getDate()}/${date.getFullYear()}`
 }
 
-const STORAGE_KEY = 'hyros-install-tracker-data'
+const CHECKER_STORAGE_KEY = 'hyros-default-checker'
 
 export default function App() {
-  const [installs, setInstalls] = useState(defaultInstalls)
+  const [installs, setInstalls] = useState([])
   const [filter, setFilter] = useState('all')
   const [versionFilter, setVersionFilter] = useState('all')
   const [categoryFilter, setCategoryFilter] = useState('all')
@@ -159,6 +54,7 @@ export default function App() {
   const [editingDateId, setEditingDateId] = useState(null)
   const [activeTab, setActiveTab] = useState('critical')
   const [isLoading, setIsLoading] = useState(true)
+  const [dbError, setDbError] = useState(null)
   const [uploading, setUploading] = useState(null) // install id currently uploading
   const [downloading, setDownloading] = useState(false)
   const [showAddForm, setShowAddForm] = useState(false)
@@ -169,140 +65,246 @@ export default function App() {
 
   const categories = [...new Set(installs.map(i => i.category))].sort()
 
-  // Load data from localStorage on mount
+  // Load data from Supabase on mount + subscribe to realtime
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY)
-      if (saved) {
-        const savedData = JSON.parse(saved)
-        // Merge default installs with saved state
-        const mergedInstalls = defaultInstalls.map(defaultInstall => {
-          const savedInstall = savedData.installs?.find(s => s.id === defaultInstall.id)
-          return savedInstall ? { ...defaultInstall, ...savedInstall } : defaultInstall
-        })
-        // Add any custom installs (id > 104)
-        const customInstalls = savedData.installs?.filter(s => s.id > 104) || []
-        setInstalls([...mergedInstalls, ...customInstalls])
-        if (savedData.defaultChecker) {
-          setDefaultChecker(savedData.defaultChecker)
-        }
+    let channel = null
+
+    async function loadData() {
+      try {
+        const dbInstalls = await fetchInstalls()
+        setInstalls(dbInstalls)
+
+        // Load defaultChecker from localStorage (per-user preference)
+        const savedChecker = localStorage.getItem(CHECKER_STORAGE_KEY)
+        if (savedChecker) setDefaultChecker(savedChecker)
+      } catch (error) {
+        console.error('Failed to load installs from database:', error)
+        setDbError('Failed to connect to database. Please refresh the page.')
+      } finally {
+        setIsLoading(false)
       }
-    } catch (error) {
-      console.log('No saved data found, using defaults')
     }
-    setIsLoading(false)
+
+    loadData()
+
+    // Subscribe to realtime changes from other users
+    channel = subscribeToInstalls((payload) => {
+      const { eventType, new: newRow, old: oldRow } = payload
+
+      if (eventType === 'UPDATE' || eventType === 'INSERT') {
+        const updatedInstall = rowToInstall(newRow)
+        setInstalls(prev => {
+          const exists = prev.find(i => i.id === updatedInstall.id)
+          if (exists) {
+            return prev.map(i => i.id === updatedInstall.id ? updatedInstall : i)
+          }
+          return [...prev, updatedInstall].sort((a, b) => a.id - b.id)
+        })
+      }
+
+      if (eventType === 'DELETE') {
+        setInstalls(prev => prev.filter(i => i.id !== oldRow.id))
+      }
+    })
+
+    return () => {
+      if (channel) supabase.removeChannel(channel)
+    }
   }, [])
 
-  // Save data to localStorage whenever it changes
+  // Save defaultChecker to localStorage (per-user preference only)
   useEffect(() => {
     if (isLoading) return
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify({
-        installs,
-        defaultChecker
-      }))
-    } catch (error) {
-      console.error('Failed to save data:', error)
-    }
-  }, [installs, defaultChecker, isLoading])
+    localStorage.setItem(CHECKER_STORAGE_KEY, defaultChecker)
+  }, [defaultChecker, isLoading])
 
-  const toggleCritical = (id) => {
-    setInstalls(installs.map(install =>
-      install.id === id ? { ...install, critical: !install.critical } : install
-    ))
+  const toggleCritical = async (id) => {
+    const install = installs.find(i => i.id === id)
+    const newCritical = !install.critical
+    setInstalls(prev => prev.map(i => i.id === id ? { ...i, critical: newCritical } : i))
+    try {
+      await updateInstall(id, { critical: newCritical })
+    } catch (err) {
+      console.error('Failed to update critical:', err)
+      setInstalls(prev => prev.map(i => i.id === id ? { ...i, critical: !newCritical } : i))
+    }
   }
 
-  const addInstall = () => {
+  const addInstall = async () => {
     if (!newInstallName.trim()) return
 
-    const maxId = Math.max(...installs.map(i => i.id))
-    const newInstall = {
-      id: maxId + 1,
-      name: newInstallName.trim(),
-      version: newInstallVersion,
-      category: newInstallCategory,
-      status: null,
-      lastChecked: null,
-      checkedBy: '',
-      critical: false,
-      file: null
-    }
-
-    setInstalls([...installs, newInstall])
-    setNewInstallName('')
-    setNewInstallVersion('v1')
-    setNewInstallCategory('Core')
-    setShowAddForm(false)
-  }
-
-  const deleteInstall = (id) => {
-    // Only allow deleting custom installs (id > 104)
-    if (id <= 104) return
-    setInstalls(installs.filter(i => i.id !== id))
-  }
-
-  const toggleStatus = (id) => {
-    setInstalls(installs.map(install => {
-      if (install.id === id) {
-        const newStatus = install.status === null ? true : install.status === true ? false : null
-        return {
-          ...install,
-          status: newStatus,
-          checkedBy: newStatus !== null ? (install.checkedBy || defaultChecker) : install.checkedBy
-        }
+    try {
+      const maxId = await getMaxId()
+      const newInstall = {
+        id: maxId + 1,
+        name: newInstallName.trim(),
+        version: newInstallVersion,
+        category: newInstallCategory,
+        status: null,
+        lastChecked: null,
+        checkedBy: '',
+        critical: false,
+        file: null,
+        isDefault: false
       }
-      return install
-    }))
+
+      const created = await insertInstall(newInstall)
+      setInstalls(prev => [...prev, created])
+      setNewInstallName('')
+      setNewInstallVersion('v1')
+      setNewInstallCategory('Core')
+      setShowAddForm(false)
+    } catch (err) {
+      console.error('Failed to add install:', err)
+      alert('Failed to add install: ' + err.message)
+    }
   }
 
-  const handleDateClick = (id, currentDate) => {
+  const deleteInstall = async (id) => {
+    const install = installs.find(i => i.id === id)
+    if (!install || install.isDefault) return
+    setInstalls(prev => prev.filter(i => i.id !== id))
+    try {
+      await deleteInstallById(id)
+    } catch (err) {
+      console.error('Failed to delete install:', err)
+      setInstalls(prev => [...prev, install].sort((a, b) => a.id - b.id))
+    }
+  }
+
+  const toggleStatus = async (id) => {
+    const install = installs.find(i => i.id === id)
+    const newStatus = install.status === null ? true : install.status === true ? false : null
+    const newCheckedBy = newStatus !== null ? (install.checkedBy || defaultChecker) : install.checkedBy
+    setInstalls(prev => prev.map(i =>
+      i.id === id ? { ...i, status: newStatus, checkedBy: newCheckedBy } : i
+    ))
+    try {
+      await updateInstall(id, { status: newStatus, checked_by: newCheckedBy })
+    } catch (err) {
+      console.error('Failed to update status:', err)
+      setInstalls(prev => prev.map(i =>
+        i.id === id ? { ...i, status: install.status, checkedBy: install.checkedBy } : i
+      ))
+    }
+  }
+
+  const handleDateClick = async (id, currentDate) => {
     if (editingDateId === id) return
-    
+
     if (!currentDate) {
       const today = new Date()
       const dateStr = `${today.getMonth() + 1}/${today.getDate()}/${today.getFullYear()}`
-      setInstalls(installs.map(install => 
-        install.id === id ? { ...install, lastChecked: dateStr } : install
+      setInstalls(prev => prev.map(i =>
+        i.id === id ? { ...i, lastChecked: dateStr } : i
       ))
+      try {
+        await updateInstall(id, { last_checked: dateStr })
+      } catch (err) {
+        console.error('Failed to set date:', err)
+        setInstalls(prev => prev.map(i =>
+          i.id === id ? { ...i, lastChecked: null } : i
+        ))
+      }
     } else {
       setEditingDateId(id)
     }
   }
 
-  const handleDateChange = (id, value) => {
+  const handleDateChange = async (id, value) => {
     const displayDate = formatDateForDisplay(value)
-    setInstalls(installs.map(install => 
-      install.id === id ? { ...install, lastChecked: displayDate } : install
+    const oldDate = installs.find(i => i.id === id)?.lastChecked
+    setInstalls(prev => prev.map(i =>
+      i.id === id ? { ...i, lastChecked: displayDate } : i
     ))
+    try {
+      await updateInstall(id, { last_checked: displayDate })
+    } catch (err) {
+      console.error('Failed to update date:', err)
+      setInstalls(prev => prev.map(i =>
+        i.id === id ? { ...i, lastChecked: oldDate } : i
+      ))
+    }
   }
 
   const handleDateBlur = () => {
     setEditingDateId(null)
   }
 
-  const clearDate = (id, e) => {
+  const clearDate = async (id, e) => {
     e.stopPropagation()
-    setInstalls(installs.map(install => 
-      install.id === id ? { ...install, lastChecked: null } : install
+    const oldDate = installs.find(i => i.id === id)?.lastChecked
+    setInstalls(prev => prev.map(i =>
+      i.id === id ? { ...i, lastChecked: null } : i
     ))
     setEditingDateId(null)
+    try {
+      await updateInstall(id, { last_checked: null })
+    } catch (err) {
+      console.error('Failed to clear date:', err)
+      setInstalls(prev => prev.map(i =>
+        i.id === id ? { ...i, lastChecked: oldDate } : i
+      ))
+    }
   }
 
+  // Local update on keystroke, DB write on blur
   const updateCheckedBy = (id, value) => {
-    setInstalls(installs.map(install => 
-      install.id === id ? { ...install, checkedBy: value } : install
+    setInstalls(prev => prev.map(i =>
+      i.id === id ? { ...i, checkedBy: value } : i
     ))
   }
 
-  // Generate index.txt and upload to Supabase
-  const regenerateIndex = async (currentInstalls) => {
-    const filesWithDocs = currentInstalls.filter(i => i.file)
+  const saveCheckedBy = async (id) => {
+    const install = installs.find(i => i.id === id)
+    if (!install) return
+    try {
+      await updateInstall(id, { checked_by: install.checkedBy })
+    } catch (err) {
+      console.error('Failed to save checkedBy:', err)
+    }
+  }
 
-    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
-    const header = `HYROS Installation Documentation Index
+  // Generate index.txt from actual bucket contents + DB metadata
+  const regenerateIndex = async () => {
+    try {
+      // 1. List ALL actual files in the bucket (source of truth)
+      const { data: bucketFiles, error: listError } = await supabase.storage
+        .from(BUCKET_NAME)
+        .list('', { limit: 1000 })
+
+      if (listError) {
+        console.error('Failed to list bucket files:', listError)
+        return
+      }
+
+      // 2. Filter out index.txt and non-.txt files
+      const docFiles = (bucketFiles || []).filter(f =>
+        f.name !== 'index.txt' && f.name.endsWith('.txt')
+      )
+
+      // 3. Fetch current installs from DB for metadata
+      const dbInstalls = await fetchInstalls()
+
+      // 4. Cross-reference bucket files with DB installs
+      const entries = docFiles.map(bucketFile => {
+        const matchedInstall = dbInstalls.find(i =>
+          i.file && i.file.name === bucketFile.name
+        )
+
+        if (matchedInstall) {
+          return `${matchedInstall.name} | ${bucketFile.name} | ${matchedInstall.category} | ${matchedInstall.version}`
+        } else {
+          const displayName = bucketFile.name.replace('.txt', '').replace(/[-_]/g, ' ')
+          return `${displayName} | ${bucketFile.name} | Unknown | v1`
+        }
+      })
+
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
+      const header = `HYROS Installation Documentation Index
 =======================================
 Last Updated: ${new Date().toLocaleDateString()}
-Total Files: ${filesWithDocs.length}
+Total Files: ${docFiles.length}
 
 Instructions for Claude:
 - Find the platform the user needs from the list below
@@ -313,13 +315,8 @@ Instructions for Claude:
 Available Documentation:
 ------------------------`
 
-    const lines = filesWithDocs.map(i =>
-      `${i.name} | ${i.file.name} | ${i.category} | ${i.version}`
-    ).join('\n')
+      const indexContent = `${header}\n${entries.join('\n')}\n`
 
-    const indexContent = `${header}\n${lines}\n`
-
-    try {
       const { error } = await supabase.storage
         .from(BUCKET_NAME)
         .upload('index.txt', indexContent, {
@@ -355,17 +352,23 @@ Available Documentation:
       const url = getPublicUrl(file.name)
       const uploadDate = new Date().toLocaleDateString()
 
-      const updatedInstalls = installs.map(install =>
+      // Update local state
+      setInstalls(prev => prev.map(install =>
         install.id === id ? {
           ...install,
           file: { name: file.name, url, uploadDate }
         } : install
-      )
+      ))
 
-      setInstalls(updatedInstalls)
+      // Update DB
+      await updateInstall(id, {
+        file_name: file.name,
+        file_url: url,
+        file_upload_date: uploadDate
+      })
 
-      // Regenerate index.txt
-      await regenerateIndex(updatedInstalls)
+      // Regenerate index.txt from bucket listing
+      await regenerateIndex()
 
     } catch (err) {
       console.error('Upload failed:', err)
@@ -387,19 +390,25 @@ Available Documentation:
     if (!install?.file) return
 
     try {
-      // Delete from Supabase
+      // Delete from Supabase Storage
       await supabase.storage
         .from(BUCKET_NAME)
         .remove([install.file.name])
 
-      const updatedInstalls = installs.map(i =>
+      // Update local state
+      setInstalls(prev => prev.map(i =>
         i.id === id ? { ...i, file: null } : i
-      )
+      ))
 
-      setInstalls(updatedInstalls)
+      // Update DB
+      await updateInstall(id, {
+        file_name: null,
+        file_url: null,
+        file_upload_date: null
+      })
 
-      // Regenerate index.txt
-      await regenerateIndex(updatedInstalls)
+      // Regenerate index.txt from bucket listing
+      await regenerateIndex()
 
     } catch (err) {
       console.error('Delete failed:', err)
@@ -452,7 +461,7 @@ Available Documentation:
 
   // Filter installs
   const filteredInstalls = installs.filter(install => {
-    const matchesStatus = filter === 'all' || 
+    const matchesStatus = filter === 'all' ||
       (filter === 'good' && install.status === true) ||
       (filter === 'bad' && install.status === false) ||
       (filter === 'unchecked' && install.status === null)
@@ -483,13 +492,31 @@ Available Documentation:
     )
   }
 
+  if (dbError) {
+    return (
+      <div className="min-h-screen bg-gray-900 text-white p-6 flex items-center justify-center">
+        <div className="text-xl text-red-400">{dbError}</div>
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen bg-gray-900 text-white p-6">
       <div className="max-w-full mx-auto">
         <div className="mb-8 flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold text-white mb-2">HYROS Install Tracker</h1>
-            <p className="text-gray-400">Track the status of all integration install documentation</p>
+            <p className="text-gray-400">
+              Track the status of all integration install documentation •{' '}
+              <a
+                href={`${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/${BUCKET_NAME}/index.txt`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-blue-400 hover:text-blue-300 underline"
+              >
+                View Live Index
+              </a>
+            </p>
           </div>
           <div className="flex items-center gap-3">
             <button
@@ -664,8 +691,8 @@ Available Documentation:
               onChange={(e) => setSearch(e.target.value)}
               className="bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white placeholder-gray-400 w-48"
             />
-            <select 
-              value={filter} 
+            <select
+              value={filter}
               onChange={(e) => setFilter(e.target.value)}
               className="bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white"
             >
@@ -674,8 +701,8 @@ Available Documentation:
               <option value="bad">Needs Work</option>
               <option value="unchecked">Unchecked</option>
             </select>
-            <select 
-              value={versionFilter} 
+            <select
+              value={versionFilter}
               onChange={(e) => setVersionFilter(e.target.value)}
               className="bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white"
             >
@@ -683,8 +710,8 @@ Available Documentation:
               <option value="v1">V1 Only</option>
               <option value="v2">V2 Only</option>
             </select>
-            <select 
-              value={categoryFilter} 
+            <select
+              value={categoryFilter}
               onChange={(e) => setCategoryFilter(e.target.value)}
               className="bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white"
             >
@@ -710,7 +737,7 @@ Available Documentation:
         <div className="bg-gray-800 rounded-lg border border-gray-700 overflow-hidden">
           {displayedInstalls.length === 0 ? (
             <div className="p-12 text-center text-gray-500">
-              {activeTab === 'critical' 
+              {activeTab === 'critical'
                 ? 'No critical installs yet. Click the skull icon next to an install to mark it as critical.'
                 : 'No secondary installs match your filters.'}
             </div>
@@ -729,8 +756,8 @@ Available Documentation:
               </thead>
               <tbody>
                 {displayedInstalls.map((install, index) => (
-                  <tr 
-                    key={install.id} 
+                  <tr
+                    key={install.id}
                     className={`border-b border-gray-700 hover:bg-gray-750 ${index % 2 === 0 ? 'bg-gray-800' : 'bg-gray-850'}`}
                   >
                     <td className="p-4">
@@ -743,7 +770,7 @@ Available Documentation:
                           {install.critical ? <SkullFilled /> : <SkullOutline />}
                         </button>
                         <span className="text-white font-medium">{install.name}</span>
-                        {install.id > 104 && (
+                        {!install.isDefault && (
                           <button
                             onClick={() => deleteInstall(install.id)}
                             className="text-red-400 hover:text-red-300 text-xs ml-2"
@@ -768,10 +795,10 @@ Available Documentation:
                       <button
                         onClick={() => toggleStatus(install.id)}
                         className={`w-20 h-8 rounded-full transition-all duration-200 font-medium text-sm ${
-                          install.status === null 
-                            ? 'bg-gray-600 text-gray-300 hover:bg-gray-500' 
-                            : install.status 
-                              ? 'bg-green-600 text-white hover:bg-green-500' 
+                          install.status === null
+                            ? 'bg-gray-600 text-gray-300 hover:bg-gray-500'
+                            : install.status
+                              ? 'bg-green-600 text-white hover:bg-green-500'
                               : 'bg-red-600 text-white hover:bg-red-500'
                         }`}
                       >
@@ -801,8 +828,8 @@ Available Documentation:
                         <div
                           onClick={() => handleDateClick(install.id, install.lastChecked)}
                           className={`cursor-pointer px-2 py-1 rounded transition-colors ${
-                            install.lastChecked 
-                              ? 'text-gray-300 hover:bg-gray-700' 
+                            install.lastChecked
+                              ? 'text-gray-300 hover:bg-gray-700'
                               : 'text-gray-500 hover:bg-gray-700 hover:text-gray-300'
                           }`}
                           title={install.lastChecked ? "Click to edit date" : "Click to set today's date"}
@@ -816,6 +843,7 @@ Available Documentation:
                         type="text"
                         value={install.checkedBy}
                         onChange={(e) => updateCheckedBy(install.id, e.target.value)}
+                        onBlur={() => saveCheckedBy(install.id)}
                         placeholder="—"
                         className="bg-transparent border-b border-gray-600 text-gray-300 text-sm text-center w-full focus:outline-none focus:border-blue-500"
                       />
@@ -892,7 +920,7 @@ Available Documentation:
         </div>
 
         <div className="mt-4 text-gray-500 text-sm">
-          Showing {displayedInstalls.length} {activeTab} installs • Click skull to toggle critical • Data saves automatically
+          Showing {displayedInstalls.length} {activeTab} installs • Click skull to toggle critical • Data syncs automatically across all users
         </div>
       </div>
     </div>
