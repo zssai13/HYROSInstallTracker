@@ -167,9 +167,10 @@ export default function App() {
           // Re-fetch to get updated file links
           dbInstalls = await fetchInstalls()
           setInstalls(dbInstalls)
-          // Regenerate index so it reflects correct metadata
-          await regenerateIndex()
         }
+
+        // Always regenerate index to keep it current with latest format/data
+        await regenerateIndex(dbInstalls)
 
         // Load defaultChecker from localStorage (per-user preference)
         const savedChecker = localStorage.getItem(CHECKER_STORAGE_KEY)
