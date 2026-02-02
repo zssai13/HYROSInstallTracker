@@ -383,21 +383,23 @@ export default function App() {
       // 3. Use known installs if provided, otherwise fetch from DB
       const dbInstalls = knownInstalls || await fetchInstalls()
 
-      // 4. Cross-reference bucket files with DB installs
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
+
+      // 4. Cross-reference bucket files with DB installs — full absolute URLs
       const entries = docFiles.map(bucketFile => {
+        const fullUrl = `${supabaseUrl}/storage/v1/object/public/${BUCKET_NAME}/${bucketFile.name}`
         const matchedInstall = dbInstalls.find(i =>
           i.file && i.file.name === bucketFile.name
         )
 
         if (matchedInstall) {
-          return `${matchedInstall.name} | ${bucketFile.name} | ${matchedInstall.category} | ${matchedInstall.version}`
+          return `${fullUrl}\n  Platform: ${matchedInstall.name} | Category: ${matchedInstall.category} | Version: ${matchedInstall.version}`
         } else {
           const displayName = bucketFile.name.replace('.txt', '').replace(/[-_]/g, ' ')
-          return `${displayName} | ${bucketFile.name} | Unknown | v1`
+          return `${fullUrl}\n  Platform: ${displayName} | Category: Unknown | Version: v1`
         }
       })
 
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
       const header = `HYROS Installation Documentation Index
 =======================================
 Last Updated: ${new Date().toLocaleDateString()}
@@ -405,14 +407,14 @@ Total Files: ${docFiles.length}
 
 Instructions for Claude:
 - Find the platform the user needs from the list below
-- Fetch the file at the URL shown
+- Fetch the file using the FULL ABSOLUTE URL shown
 - Use the documentation to guide the installation
-- Base URL: ${supabaseUrl}/storage/v1/object/public/${BUCKET_NAME}/
+- All URLs below are complete and can be fetched directly
 
 Available Documentation:
 ------------------------`
 
-      const indexContent = `${header}\n${entries.join('\n')}\n`
+      const indexContent = `${header}\n${entries.join('\n\n')}\n`
 
       // Wrap in Blob — Supabase Storage requires Blob/File/ArrayBuffer, not raw strings
       const blob = new Blob([indexContent], { type: 'text/plain' })
